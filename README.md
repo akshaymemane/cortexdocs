@@ -1,42 +1,34 @@
 # CortexDocs
 
-CortexDocs is a C-first API documentation generator. Point it at a folder containing `.c` and `.h` files, and it turns Clang AST output plus doc comments into a normalized API model and a browsable docs experience.
+Generate API docs directly from C code.  
+No JSON. No manual schemas.
 
-## Install
+⚡ C-first &nbsp;•&nbsp; ⚡ Code-driven &nbsp;•&nbsp; ⚡ Zero boilerplate
 
-**Requirements:** Go 1.21+ and `clang`.
+---
 
-```bash
-go install github.com/akshaymemane/cortexdocs/cmd/cortexdocs@latest
-```
+<!-- Replace with a real demo GIF: record `make run` → browser opening → clicking through endpoints -->
+![CortexDocs Demo](docs/demo.gif)
 
-`clang` ships with Xcode Command Line Tools on macOS. On Linux:
-
-```bash
-apt install clang   # Debian / Ubuntu
-dnf install clang   # Fedora / RHEL
-```
+---
 
 ## Quick start
 
 ```bash
-cortexdocs generate ./your-c-project
-cortexdocs serve
+git clone https://github.com/akshaymemane/cortexdocs
+cd cortexdocs
+make run
 ```
 
-Then open `http://localhost:8080`.
+Open `http://localhost:8080`. Done.
 
-## What it does
+---
 
-- Parses C source and header files with `clang -Xclang -ast-dump=json`
-- Extracts functions, structs, enums, and doc comments
-- Converts comment annotations like `@route`, `@desc`, `@param`, `@response`, `@example`, and `@deprecated` into a normalized JSON IR
-- Heuristically discovers endpoints from existing C code — method checks, URI comparisons, handler registration patterns
-- Detects H2O-style route registration and YAML config `paths:` blocks
-- Writes docs data to `output/api.json`
-- Serves a React/Vite frontend from `web/dist`, or a built-in zero-dependency fallback viewer when the frontend is not built
+## How it works
 
-## Comment format
+Write standard C doc comments. CortexDocs does the rest.
+
+**Input — C source with doc comments:**
 
 ```c
 /**
@@ -49,24 +41,79 @@ Then open `http://localhost:8080`.
 int get_users(int limit);
 ```
 
-Single-line `///` doc comments are also supported:
+**Output — browsable docs UI with live Try API panel:**
 
-```c
-/// @route GET /users/{id}
-/// @desc Get a single user by ID.
-/// @param [in] user_id The numeric user ID.
-/// @response 200 User Found user.
-int get_user(int user_id);
+<!-- Replace with a real screenshot of the UI -->
+![CortexDocs UI](docs/screenshot.png)
+
+No schema files. No annotation processors. Just parse, extract, render.
+
+---
+
+## vs. every other API doc tool
+
+Unlike tools that require manually writing JSON schemas or YAML specs, CortexDocs extracts API definitions directly from C source code.  
+Point it at a folder. Get docs.
+
+---
+
+## Install
+
+Requires Go 1.21+ and `clang`.
+
+```bash
+go install github.com/akshaymemane/cortexdocs/cmd/cortexdocs@latest
 ```
 
-Mark endpoints as deprecated:
+`clang` ships with Xcode Command Line Tools on macOS. On Linux:
+
+```bash
+apt install clang   # Debian / Ubuntu
+dnf install clang   # Fedora / RHEL
+```
+
+---
+
+## Usage
+
+```bash
+# Generate docs from any C project
+cortexdocs generate ./your-c-project
+
+# Serve the docs UI
+cortexdocs serve
+
+# With options
+cortexdocs generate --name "My API" --output ./docs/api.json ./src
+cortexdocs serve --port 9090
+
+# Pre-configure the Try API panel
+CORTEXDOCS_TARGET_BASE_URL=http://localhost:7890 cortexdocs serve
+```
+
+---
+
+## Comment format
 
 ```c
 /**
- * @route DELETE /users/{id}
- * @deprecated Use PATCH /users/{id}/archive instead.
+ * @route   GET /users
+ * @desc    Fetch the user collection.
+ * @param   [in] limit  Maximum rows to return.
+ * @example {"limit": 10}
+ * @response 200 User[]  Successful lookup.
  */
-int delete_user(int user_id);
+int get_users(int limit);
+```
+
+Single-line `///` comments also work:
+
+```c
+/// @route GET /users/{id}
+/// @desc  Get a single user by ID.
+/// @response 200 User  Found user.
+/// @response 404 void  Not found.
+int get_user(int user_id);
 ```
 
 ### Supported tags
@@ -80,75 +127,59 @@ int delete_user(int user_id);
 | `@example json` | Pre-fills the Try API request body |
 | `@deprecated` | Marks the endpoint or function as deprecated |
 
-## CLI options
+---
+
+## No doc comments? No problem.
+
+CortexDocs also infers endpoints from existing C codebases with no annotations at all:
+
+```c
+// No @route needed — CortexDocs detects this pattern
+if (strcmp(req->method, "GET") == 0 && strcmp(req->uri, "/users") == 0) {
+    return send_json(get_users());
+}
+```
+
+It also picks up H2O route registration calls and YAML config `paths:` blocks.  
+Inferred endpoints are labelled **Inferred** in the UI so you always know what came from code vs. comments.
+
+---
+
+## Running the sample API end-to-end
+
+The `examples/sample-c-api` directory includes a real HTTP server (built on [mongoose](https://github.com/cesanta/mongoose)) so you can try the live Try API panel:
 
 ```bash
-# Generate with a custom API name and output path
-cortexdocs generate --name "My API" --output ./docs/api.json ./src
+# Terminal 1 — C API on :7890
+cd examples/sample-c-api && make run
 
-# Serve on a different port
-cortexdocs serve --port 9090
-
-# Pre-configure the Try API panel against a live server
-CORTEXDOCS_TARGET_BASE_URL=http://localhost:7890 cortexdocs serve
+# Terminal 2 — CortexDocs UI on :8080
+make run
 ```
+
+Open `http://localhost:8080`, set Base URL to `http://localhost:7890`, and fire live requests directly from the docs.
+
+---
 
 ## Repository layout
 
-```text
+```
 cortexdocs/
-├── cmd/
-│   └── cortexdocs/     # CLI entry point (go install lands here)
+├── cmd/cortexdocs/     CLI entry point  (go install lands here)
 ├── internal/
-│   ├── generator/      # Converts ParseResult → model.Spec
-│   ├── model/          # Shared JSON-serialisable types
-│   ├── parser/         # Clang AST walker + heuristic inference
-│   └── server/         # HTTP server, /api/try proxy
+│   ├── parser/         Clang AST walker + heuristic inference
+│   ├── generator/      Converts ParseResult → JSON spec
+│   ├── model/          Shared types (Go ↔ TypeScript contract)
+│   └── server/         HTTP server + /api/try proxy
 ├── examples/
-│   └── sample-c-api/   # Runnable C API (mongoose, :7890)
-├── output/             # Generated api.json lives here
-└── web/                # React/Vite frontend
+│   ├── sample-c-api/   Runnable users API (mongoose, :7890)
+│   ├── heuristic-c-api/  No-annotation inference demo
+│   └── h2o-style-api/  H2O registration + YAML config demo
+└── web/                React/Vite frontend
 ```
 
-## Running the sample API
+---
 
-The `examples/sample-c-api` directory contains a fully runnable HTTP server (built on [mongoose](https://github.com/cesanta/mongoose)) so you can try the live Try API panel end-to-end.
+## License
 
-```bash
-# Terminal 1 — build and start the C API on :7890
-cd examples/sample-c-api && make run
-
-# Terminal 2 — start CortexDocs
-cortexdocs generate ./examples/sample-c-api
-cortexdocs serve
-```
-
-Open `http://localhost:8080`, set the Base URL to `http://localhost:7890`, and run live requests directly from the docs UI.
-
-## Frontend
-
-The React app lives in `web/` and fetches `/api.json` from the Go server.
-
-```bash
-cd web && npm install && npm run build
-```
-
-If `web/dist` does not exist, `cortexdocs serve` falls back to an inline viewer so docs are always accessible with zero frontend build steps.
-
-## Heuristic extraction
-
-For codebases that do not use CortexDocs doc comments, the parser infers endpoints from:
-
-- `strcmp(req->method, "GET")` style method checks
-- `strcmp(req->uri, "/users")` or `mg_match(...)` URI comparisons
-- Handler registration calls like `register_handler(hostconf, "/foo", handler)`
-- H2O `h2o_config_register_path(...)` calls
-- H2O YAML `paths:` blocks in `.conf`, `.yaml`, and `.yml` files
-- REST-shaped function names like `get_users`, `create_user`, `delete_user`
-
-Heuristically inferred endpoints are labelled **Inferred** in the UI; doc-comment endpoints are labelled **Documented**.
-
-## Notes
-
-- `output/api.json` is the contract between the generator and the UI — the Go model types in `internal/model` and the TypeScript types in `web/src/types.ts` must stay in sync.
-- The parser requires `clang` on `PATH`. If a file fails to parse, a warning is recorded in `api.json` and shown in the UI rather than aborting the whole run.
+MIT — see [LICENSE](LICENSE).
