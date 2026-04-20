@@ -204,6 +204,10 @@ func buildFunctionDoc(sourceFile string, comments []commentBlock, node *astNode)
 		}
 	}
 
+	routeSource := ""
+	if comment.Route != nil {
+		routeSource = "docblock"
+	}
 	return FunctionDoc{
 		Name:        node.Name,
 		Signature:   safeQualType(node.Type),
@@ -214,6 +218,7 @@ func buildFunctionDoc(sourceFile string, comments []commentBlock, node *astNode)
 		Params:      params,
 		Description: comment.Description,
 		Route:       comment.Route,
+		RouteSource: routeSource,
 		Responses:   responses,
 		Deprecated:  comment.Deprecated,
 		Example:     comment.Example,

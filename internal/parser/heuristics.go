@@ -190,6 +190,7 @@ func attachHeuristicRoutes(functions []FunctionDoc, endpoints []EndpointDoc) {
 			Method: matches[0].Method,
 			Path:   matches[0].Path,
 		}
+		functions[index].RouteSource = "heuristic"
 		if functions[index].Description == "" {
 			functions[index].Description = matches[0].Description
 		}

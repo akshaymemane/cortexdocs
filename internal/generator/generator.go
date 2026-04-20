@@ -48,6 +48,10 @@ func BuildSpec(sourcePath, name string, parsed parser.ParseResult) model.Spec {
 		spec.Functions = append(spec.Functions, function)
 
 		if fn.Route != nil {
+			src := fn.RouteSource
+			if src == "" {
+				src = "docblock"
+			}
 			endpoints = append(endpoints, model.Endpoint{
 				ID:          slugify(fn.Route.Method + "-" + fn.Route.Path),
 				Name:        fn.Name,
@@ -60,7 +64,7 @@ func BuildSpec(sourcePath, name string, parsed parser.ParseResult) model.Spec {
 				Line:        fn.Line,
 				Params:      mapParams(fn.Params),
 				Responses:   mapResponses(fn.Responses),
-				Source:      "docblock",
+				Source:      src,
 				Deprecated:  fn.Deprecated,
 				Example:     fn.Example,
 			})

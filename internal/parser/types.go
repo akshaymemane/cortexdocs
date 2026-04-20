@@ -35,6 +35,7 @@ type FunctionDoc struct {
 	Params      []ParamDoc
 	Description string
 	Route       *RouteDoc
+	RouteSource string // "docblock" or "heuristic"
 	Responses   []ResponseDoc
 	Deprecated  bool
 	Example     string
