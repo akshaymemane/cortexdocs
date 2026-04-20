@@ -1,0 +1,23 @@
+# Generated output (commit only intentional snapshots)
+output/api.json
+
+# Frontend build artifacts
+web/dist/
+web/node_modules/
+
+# Mongoose vendored files (fetched via make)
+examples/sample-c-api/mongoose.h
+examples/sample-c-api/mongoose.c
+
+# Compiled example binary
+examples/sample-c-api/server
+
+# Go build artifact
+cortexdocs
+
+# Go cache
+.gocache/
+
+# macOS
+.DS_Store
+*.dprobes.h
